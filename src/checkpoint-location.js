@@ -1,3 +1,4 @@
+import {beginLoading} from './feedback';
 import L from 'leaflet';
 
 export function setupCheckpointLocation(el, {point, center, tile}) {
@@ -23,13 +24,15 @@ export function setupCheckpointLocation(el, {point, center, tile}) {
     radius: Number(radius.value), color: '#eb7944', fillOpacity: 0.12, weight: 2,
     interactive: false,
   }).addTo(picker);
-  let requestVersion = 0;
+  let requestVersion = 0, finishLoading;
 
   function message(text, error = false) {
     status.textContent = text;
     status.classList.toggle('error', error);
   }
   function stopWaiting() {
+    finishLoading?.();
+    finishLoading = null;
     requestVersion++;
     button.disabled = false;
     button.removeAttribute('aria-busy');
@@ -76,6 +79,8 @@ export function setupCheckpointLocation(el, {point, center, tile}) {
       message('This browser does not support location access. Select a location on the map or enter coordinates.', true);
       return;
     }
+    stopWaiting();
+    finishLoading = beginLoading('Finding your location…');
     const version = ++requestVersion;
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
@@ -104,7 +109,7 @@ export function setupCheckpointLocation(el, {point, center, tile}) {
   };
   const observer = new MutationObserver(() => {
     if (!el.isConnected) {
-      requestVersion++;
+      stopWaiting();
       picker.remove();
       observer.disconnect();
     }
